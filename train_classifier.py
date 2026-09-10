@@ -66,6 +66,20 @@ def main():
         print(f'Batch per forward pass: {load_batch_size}')
         print(f'Gradient accumulation steps: {steps_per_update}')
 
+    if rank == 0:
+        torchvision.datasets.CIFAR10(
+            'data',
+            train=True,
+            download=True
+        )
+        torchvision.datasets.CIFAR10(
+            'data',
+            train=False,
+            download=True
+        )
+
+    dist.barrier()
+
     transform = Compose([
         ToTensor(),
         Normalize(0.5, 0.5)
@@ -74,14 +88,14 @@ def main():
     train_dataset = torchvision.datasets.CIFAR10(
         'data',
         train=True,
-        download=True,
+        download=False,
         transform=transform
     )
 
     val_dataset = torchvision.datasets.CIFAR10(
         'data',
         train=False,
-        download=True,
+        download=False,
         transform=transform
     )
 
@@ -114,23 +128,22 @@ def main():
 
     if rank == 0:
         if args.pretrained_model_path is not None:
-            writer = SummaryWriter(
-                os.path.join(
-                    'logs',
-                    'cifar10',
-                    'pretrain-cls'
-                )
+            log_dir = os.path.join(
+                'logs',
+                'cifar10',
+                'pretrain-cls'
             )
         else:
-            writer = SummaryWriter(
-                os.path.join(
-                    'logs',
-                    'cifar10',
-                    'scratch-cls'
-                )
+            log_dir = os.path.join(
+                'logs',
+                'cifar10',
+                'scratch-cls'
             )
 
+        writer = SummaryWriter(log_dir)
+
     if args.pretrained_model_path is not None:
+
         checkpoint = torch.load(
             args.pretrained_model_path,
             map_location='cpu'
@@ -151,6 +164,7 @@ def main():
         ).to(device)
 
     else:
+
         base_mae = MAE_ViT()
 
         model = ViT_Classifier(
@@ -252,6 +266,7 @@ def main():
         avg_train_acc = sum(acces) / len(acces)
 
         if rank == 0:
+
             current_lr = optim.param_groups[0]['lr']
 
             print(
@@ -263,23 +278,17 @@ def main():
 
             writer.add_scalars(
                 'cls/loss',
-                {
-                    'train': avg_train_loss
-                },
+                {'train': avg_train_loss},
                 global_step=e
             )
 
             writer.add_scalars(
                 'cls/acc',
-                {
-                    'train': avg_train_acc
-                },
+                {'train': avg_train_acc},
                 global_step=e
             )
 
-        if rank == 0:
-
-            model.eval()
+            model.module.eval()
 
             val_losses = []
             val_acces = []
@@ -299,7 +308,7 @@ def main():
                     )
 
                     with torch.amp.autocast('cuda'):
-                        logits = model(img)
+                        logits = model.module(img)
                         loss = loss_fn(logits, label)
 
                     acc = acc_fn(logits, label)
@@ -318,17 +327,13 @@ def main():
 
             writer.add_scalars(
                 'cls/loss',
-                {
-                    'val': avg_val_loss
-                },
+                {'val': avg_val_loss},
                 global_step=e
             )
 
             writer.add_scalars(
                 'cls/acc',
-                {
-                    'val': avg_val_acc
-                },
+                {'val': avg_val_acc},
                 global_step=e
             )
 
