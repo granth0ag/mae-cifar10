@@ -68,13 +68,13 @@ if __name__ == '__main__':
     best_val_acc = 0.0
     step_count = 0
     optim.zero_grad()
-    scaler = torch.cuda.amp.GradScaler()    
+    scaler = torch.amp.GradScaler("cuda")       
     for e in range(args.total_epoch):
         model.train()
         losses, acces = [], []
         for img, label in tqdm(train_dataloader, desc=f"epoch {e}"):
             step_count += 1
-            with torch.cuda.amp.autocast():            
+            with torch.amp.autocast("cuda"):           
                 img, label = img.to(device), label.to(device)
                 logits = model(img)
                 loss = loss_fn(logits, label)
