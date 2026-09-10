@@ -77,16 +77,6 @@ if __name__ == '__main__':
                 scaler.step(optim)
                 scaler.update()
                 optim.zero_grad()
-            
-            predicted_img, mask = model(img)
-            # compute loss only on masked patches
-            loss = torch.mean((predicted_img - img) ** 2 * mask) / args.mask_ratio
-            (loss / steps_per_update).backward()
-
-            if step_count % steps_per_update == 0:
-                optim.step()
-                optim.zero_grad()
-
             losses.append(loss.item())
 
         lr_scheduler.step()      
