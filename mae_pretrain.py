@@ -58,6 +58,8 @@ if __name__ == '__main__':
     step_count = 0
     optim.zero_grad()
 
+    scaler = torch.cuda.amp.GradScaler()
+
     for e in range(args.total_epoch):
         model.train()
         losses = []
@@ -65,8 +67,18 @@ if __name__ == '__main__':
         for img, _ in tqdm(dataloader, desc=f"epoch {e}"):
             step_count += 1
             img = img.to(device)
-            predicted_img, mask = model(img)
 
+            with torch.cuda.amp.autocast():
+                predicted_img, mask = model(img)
+                loss = torch.mean((predicted_img - img) ** 2 * mask) / args.mask_ratio
+            scaler.scale(loss / steps_per_update).backward()
+
+            if step_count % steps_per_update == 0:
+                scaler.step(optim)
+                scaler.update()
+                optim.zero_grad()
+            
+            predicted_img, mask = model(img)
             # compute loss only on masked patches
             loss = torch.mean((predicted_img - img) ** 2 * mask) / args.mask_ratio
             (loss / steps_per_update).backward()
@@ -84,21 +96,22 @@ if __name__ == '__main__':
         print(f'Epoch {e}: train loss = {avg_loss:.5f}')
 
         # validation reconstruction
-        model.eval()
-        with torch.no_grad():
-            val_img = torch.stack([val_dataset[i][0] for i in range(16)]).to(device)
-            predicted_val_img, mask = model(val_img)
-            predicted_val_img = predicted_val_img * mask + val_img * (1 - mask)
+        if e % 10 == 0 or e == args.total_epoch - 1:
+            model.eval()
+            with torch.no_grad():
+                val_img = torch.stack([val_dataset[i][0] for i in range(16)]).to(device)
+                predicted_val_img, mask = model(val_img)
+                predicted_val_img = predicted_val_img * mask + val_img * (1 - mask)
 
-            vis = torch.cat([val_img * (1 - mask), predicted_val_img, val_img], dim=0)
-            vis = rearrange(vis, '(v h1 w1) c h w -> c (h1 h) (w1 v w)', w1=2, v=3)
-            writer.add_image('val/reconstructions', (vis + 1) / 2, global_step=e)
+                vis = torch.cat([val_img * (1 - mask), predicted_val_img, val_img], dim=0)
+                vis = rearrange(vis, '(v h1 w1) c h w -> c (h1 h) (w1 v w)', w1=2, v=3)
+                writer.add_image('val/reconstructions', (vis + 1) / 2, global_step=e)
 
-        torch.save({
-            'epoch': e,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optim.state_dict(),
-            'loss': avg_loss,
-        }, args.model_path)
-
+        if e % 10 == 0 or e == args.total_epoch - 1:
+            torch.save({
+                'epoch': e,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optim.state_dict(),
+                'loss': avg_loss,
+            }, args.model_path)
     writer.close()
