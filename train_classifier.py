@@ -5,7 +5,7 @@ import torch
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.transforms import ToTensor, Compose, Normalize
-from tqdm import tqdm
+from tqdm import tqdm   
 
 from model import *
 from utils import setup_seed
@@ -68,21 +68,23 @@ if __name__ == '__main__':
     best_val_acc = 0.0
     step_count = 0
     optim.zero_grad()
-
+    scaler = torch.cuda.amp.GradScaler()    
     for e in range(args.total_epoch):
         model.train()
         losses, acces = [], []
         for img, label in tqdm(train_dataloader, desc=f"epoch {e}"):
             step_count += 1
-            img, label = img.to(device), label.to(device)
-            logits = model(img)
-            loss = loss_fn(logits, label)
+            with torch.cuda.amp.autocast():            
+                img, label = img.to(device), label.to(device)
+                logits = model(img)
+                loss = loss_fn(logits, label)
             acc = acc_fn(logits, label)
 
-            (loss / steps_per_update).backward()
+            scaler.scale(loss / steps_per_update).backward()
 
             if step_count % steps_per_update == 0:
-                optim.step()
+                scaler.step(optim) 
+                scaler.update()
                 optim.zero_grad()
 
             losses.append(loss.item())
