@@ -31,7 +31,9 @@ def main():
         type=str,
         default='vit-t-classifier-from_scratch.pt'
     )
+    parser.add_argument('--resume', type=str, default=None)
     args = parser.parse_args()
+    
 
     dist.init_process_group(backend='nccl')
 
@@ -209,9 +211,37 @@ def main():
     best_val_acc = 0.0
     step_count = 0
 
+    if args.resume is not None:
+        checkpoint = torch.load(
+            args.resume,
+            map_location='cpu'
+        )
+
+        model.module.load_state_dict(
+            checkpoint['model_state_dict']
+        )
+
+        optim.load_state_dict(
+            checkpoint['optimizer_state_dict']
+        )
+
+        lr_scheduler.load_state_dict(
+            checkpoint['scheduler_state_dict']
+        )
+
+        scaler.load_state_dict(
+            checkpoint['scaler_state_dict']
+        )
+
+        start_epoch = checkpoint['epoch'] + 1
+        best_val_acc = checkpoint['val_acc']
+
+        if rank == 0:
+            print(f'Resuming from epoch {start_epoch}')
+
     optim.zero_grad()
 
-    for e in range(args.total_epoch):
+    for e in range(start_epoch,args.total_epoch):
 
         model.train()
         train_sampler.set_epoch(e)

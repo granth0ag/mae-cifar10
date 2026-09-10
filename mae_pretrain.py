@@ -30,12 +30,14 @@ def main():
     parser.add_argument('--total_epoch', type=int, default=2000)
     parser.add_argument('--warmup_epoch', type=int, default=200)
     parser.add_argument('--model_path', type=str, default='vit-t-mae.pt')
+    parser.add_argument('--resume', type=str, default=None)
 
     args = parser.parse_args()
 
+    local_rank = int(os.environ['LOCAL_RANK'])
+
     dist.init_process_group(backend='nccl')
 
-    local_rank = int(os.environ['LOCAL_RANK'])
     rank = dist.get_rank()
     world_size = dist.get_world_size()
 
@@ -48,6 +50,7 @@ def main():
             train=True,
             download=True
         )
+
         torchvision.datasets.CIFAR10(
             'data',
             train=False,
@@ -55,11 +58,9 @@ def main():
         )
 
     dist.barrier()
-    
 
     setup_seed(args.seed + rank)
 
-    # batch_size is the global batch size
     assert args.batch_size % world_size == 0
 
     per_device_batch_size = args.batch_size // world_size
@@ -116,6 +117,7 @@ def main():
     )
 
     writer = None
+
     if rank == 0:
         writer = SummaryWriter(
             os.path.join('logs', 'cifar10', 'mae-pretrain')
@@ -139,7 +141,11 @@ def main():
 
     lr_func = lambda epoch: min(
         (epoch + 1) / (args.warmup_epoch + 1e-8),
-        0.5 * (math.cos(epoch / args.total_epoch * math.pi) + 1)
+        0.5 * (
+            math.cos(
+                epoch / args.total_epoch * math.pi
+            ) + 1
+        )
     )
 
     lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
@@ -149,10 +155,43 @@ def main():
 
     scaler = torch.amp.GradScaler('cuda')
 
-    optim.zero_grad()
+    start_epoch = 0
     step_count = 0
 
-    for e in range(args.total_epoch):
+    if args.resume is not None:
+
+        checkpoint = torch.load(
+            args.resume,
+            map_location='cpu'
+        )
+
+        model.module.load_state_dict(
+            checkpoint['model_state_dict']
+        )
+
+        optim.load_state_dict(
+            checkpoint['optimizer_state_dict']
+        )
+
+        lr_scheduler.load_state_dict(
+            checkpoint['scheduler_state_dict']
+        )
+
+        scaler.load_state_dict(
+            checkpoint['scaler_state_dict']
+        )
+
+        start_epoch = checkpoint['epoch'] + 1
+
+        if rank == 0:
+            print(
+                f'Resuming from epoch {start_epoch}'
+            )
+
+    optim.zero_grad()
+
+    for e in range(start_epoch, args.total_epoch):
+
         model.train()
         train_sampler.set_epoch(e)
 
@@ -167,6 +206,7 @@ def main():
             dataloader = train_dataloader
 
         for img, _ in dataloader:
+
             step_count += 1
 
             img = img.to(
@@ -175,7 +215,9 @@ def main():
             )
 
             with torch.amp.autocast('cuda'):
+
                 predicted_img, mask = model(img)
+
                 loss = (
                     torch.mean(
                         (predicted_img - img) ** 2 * mask
@@ -187,6 +229,7 @@ def main():
             ).backward()
 
             if step_count % steps_per_update == 0:
+
                 scaler.step(optim)
                 scaler.update()
                 optim.zero_grad()
@@ -198,6 +241,7 @@ def main():
         avg_loss = sum(losses) / len(losses)
 
         if rank == 0:
+
             current_lr = optim.param_groups[0]['lr']
 
             writer.add_scalar(
@@ -221,9 +265,11 @@ def main():
         if rank == 0 and (
             e % 10 == 0 or e == args.total_epoch - 1
         ):
-            model.eval()
+
+            model.module.eval()
 
             with torch.no_grad():
+
                 val_img = torch.stack([
                     val_dataset[i][0]
                     for i in range(16)
@@ -233,7 +279,10 @@ def main():
                 )
 
                 with torch.amp.autocast('cuda'):
-                    predicted_val_img, mask = model(val_img)
+
+                    predicted_val_img, mask = (
+                        model.module(val_img)
+                    )
 
                 predicted_val_img = (
                     predicted_val_img * mask
@@ -262,14 +311,22 @@ def main():
         if rank == 0 and (
             e % 10 == 0 or e == args.total_epoch - 1
         ):
-            torch.save({
-                'epoch': e,
-                'model_state_dict': model.module.state_dict(),
-                'optimizer_state_dict': optim.state_dict(),
-                'scheduler_state_dict': lr_scheduler.state_dict(),
-                'scaler_state_dict': scaler.state_dict(),
-                'loss': avg_loss,
-            }, args.model_path)
+
+            torch.save(
+                {
+                    'epoch': e,
+                    'model_state_dict':
+                        model.module.state_dict(),
+                    'optimizer_state_dict':
+                        optim.state_dict(),
+                    'scheduler_state_dict':
+                        lr_scheduler.state_dict(),
+                    'scaler_state_dict':
+                        scaler.state_dict(),
+                    'loss': avg_loss,
+                },
+                args.model_path
+            )
 
     if writer is not None:
         writer.close()
