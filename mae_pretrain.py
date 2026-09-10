@@ -42,6 +42,21 @@ def main():
     torch.cuda.set_device(local_rank)
     device = torch.device('cuda', local_rank)
 
+    if rank == 0:
+        torchvision.datasets.CIFAR10(
+            'data',
+            train=True,
+            download=True
+        )
+        torchvision.datasets.CIFAR10(
+            'data',
+            train=False,
+            download=True
+        )
+
+    dist.barrier()
+    
+
     setup_seed(args.seed + rank)
 
     # batch_size is the global batch size
@@ -73,14 +88,14 @@ def main():
     train_dataset = torchvision.datasets.CIFAR10(
         'data',
         train=True,
-        download=True,
+        download=False,
         transform=transform
     )
 
     val_dataset = torchvision.datasets.CIFAR10(
         'data',
         train=False,
-        download=True,
+        download=False,
         transform=transform
     )
 
