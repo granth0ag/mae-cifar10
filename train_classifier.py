@@ -72,12 +72,12 @@ def main():
         torchvision.datasets.CIFAR10(
             'data',
             train=True,
-            download=True
+            download=False
         )
         torchvision.datasets.CIFAR10(
             'data',
             train=False,
-            download=True
+            download=False
         )
 
     dist.barrier()
