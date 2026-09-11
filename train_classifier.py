@@ -241,7 +241,7 @@ def main():
 
     optim.zero_grad()
 
-    for e in range(start_epoch,args.total_epoch):
+    for e in range(args.total_epoch):
 
         model.train()
         train_sampler.set_epoch(e)
