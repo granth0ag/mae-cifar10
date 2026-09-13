@@ -62,7 +62,7 @@ The downstream classifier was evaluated using the CIFAR-10 test set.
 
 MAE pretraining improved downstream classification accuracy by approximately 15.7 percentage points in the reported run.
 
-<img src="assets/cls_acc_curve.png" alt="Classification accuracy: pretrained vs scratch" width="500">
+<img src="assets/cls_acc_curve.png" alt="Classification accuracy: pretrained vs scratch" width="250">
 
 *Validation accuracy over 100 fine-tuning epochs. Pretrained initialization (purple) converges faster and to a higher accuracy than training from scratch (pink).*
 
@@ -70,7 +70,7 @@ MAE pretraining improved downstream classification accuracy by approximately 15.
 
 The MAE was evaluated by reconstructing masked CIFAR-10 images during pretraining.
 
-<img src="assets/reconstructions.png" alt="MAE reconstructions on CIFAR-10 validation images" width="500">
+<img src="assets/reconstructions.png" alt="MAE reconstructions on CIFAR-10 validation images" width="250">
 
 *Each triplet shows, left to right: masked input, MAE reconstruction, original image.*
 
