@@ -240,8 +240,8 @@ def main():
             print(f'Resuming from epoch {start_epoch}')
 
     optim.zero_grad()
-
-    for e in range(args.total_epoch):
+    start_epoch = 0
+    for e in range(start_epoch,args.total_epoch):
 
         model.train()
         train_sampler.set_epoch(e)

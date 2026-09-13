@@ -27,8 +27,8 @@ def main():
     parser.add_argument('--base_learning_rate', type=float, default=1.5e-4)
     parser.add_argument('--weight_decay', type=float, default=0.05)
     parser.add_argument('--mask_ratio', type=float, default=0.75)
-    parser.add_argument('--total_epoch', type=int, default=2000)
-    parser.add_argument('--warmup_epoch', type=int, default=200)
+    parser.add_argument('--total_epoch', type=int, default=1500)
+    parser.add_argument('--warmup_epoch', type=int, default=150)
     parser.add_argument('--model_path', type=str, default='vit-t-mae.pt')
     parser.add_argument('--resume', type=str, default=None)
 
