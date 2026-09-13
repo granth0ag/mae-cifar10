@@ -53,16 +53,16 @@ These were used to make long-running MAE pretraining practical on a multi-GPU Ka
 
 ## Results
 
-The downstream classifier was evaluated using the CIFAR-10 test set.
+The downstream classifier was evaluated using the CIFAR-10 test set. Pretraining was performed for 1500 epochs using 2× NVIDIA T4 GPUs with distributed data parallelism, mixed precision, and gradient accumulation.
 
 | Initialization | Test Accuracy |
 |---|---:|
 | ViT from scratch | 73.8% |
 | MAE pretrained | 89.5% |
 
-MAE pretraining improved downstream classification accuracy by approximately 15.7 percentage points in the reported run.
+Best test accuracy obtained in the reported run: **89.5%** (MAE-pretrained) vs. **73.8%** (from scratch) — a difference of approximately 15.7 percentage points.
 
-<img src="assets/cls_acc_curve.png" alt="Classification accuracy: pretrained vs scratch" width="250">
+<img src="assets/cls_acc_curve.png" alt="Classification accuracy: pretrained vs scratch" width="350">
 
 *Validation accuracy over 100 fine-tuning epochs. Pretrained initialization (purple) converges faster and to a higher accuracy than training from scratch (pink).*
 
@@ -70,7 +70,7 @@ MAE pretraining improved downstream classification accuracy by approximately 15.
 
 The MAE was evaluated by reconstructing masked CIFAR-10 images during pretraining.
 
-<img src="assets/reconstructions.png" alt="MAE reconstructions on CIFAR-10 validation images" width="250">
+<img src="assets/reconstructions.png" alt="MAE reconstructions on CIFAR-10 validation images" width="350">
 
 *Each triplet shows, left to right: masked input, MAE reconstruction, original image.*
 
@@ -79,6 +79,10 @@ The MAE was evaluated by reconstructing masked CIFAR-10 images during pretrainin
 The pretrained encoder achieved substantially higher downstream classification accuracy than the same architecture trained from scratch.
 
 This suggests that the representation learned through masked image reconstruction transferred effectively to supervised classification on CIFAR-10.
+
+## Limitations
+
+This study focuses on a single CIFAR-10 benchmark and a single primary training configuration due to computational constraints. The reported results therefore demonstrate the effectiveness of the implemented pipeline for this setting rather than providing a comprehensive ablation of MAE hyperparameters. Future work could evaluate different masking ratios, model sizes, pretraining durations, and additional datasets.
 
 ## Running
 
@@ -120,7 +124,9 @@ mae-cifar10/
 
 ## Reference
 
-This implementation was developed by studying and taking inspiration from existing MAE/ViT implementations. The project extends the basic training setup with DDP, AMP, gradient accumulation, checkpointing, and TensorBoard logging for efficient multi-GPU execution.
+This implementation was adapted from [IcarusWizard/MAE](https://github.com/IcarusWizard/MAE), a PyTorch MAE implementation for CIFAR-10. The project extends that base training setup with DDP, AMP, gradient accumulation, checkpointing, and TensorBoard logging for efficient multi-GPU execution.
+
+- He, K., Chen, X., Xie, S., Li, Y., Dollár, P., & Girshick, R. (2021). *Masked Autoencoders Are Scalable Vision Learners.* arXiv:2111.06377.
 
 ## Status
 
