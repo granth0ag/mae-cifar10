@@ -4,8 +4,6 @@ A PyTorch implementation of Masked Autoencoder (MAE) pretraining with a ViT enco
 
 The project studies whether self-supervised MAE pretraining improves downstream classification compared with training the same classifier from scratch.
 
-Repo: [github.com/granth0ag/mae-cifar10](https://github.com/granth0ag/mae-cifar10)
-
 ## Overview
 
 The training pipeline consists of two stages:
@@ -64,7 +62,7 @@ The downstream classifier was evaluated using the CIFAR-10 test set.
 
 MAE pretraining improved downstream classification accuracy by approximately 15.7 percentage points in the reported run.
 
-![Classification accuracy: pretrained vs scratch](assets/cls_acc_curve.png)
+<img src="assets/cls_acc_curve.png" alt="Classification accuracy: pretrained vs scratch" width="500">
 
 *Validation accuracy over 100 fine-tuning epochs. Pretrained initialization (purple) converges faster and to a higher accuracy than training from scratch (pink).*
 
@@ -72,10 +70,9 @@ MAE pretraining improved downstream classification accuracy by approximately 15.
 
 The MAE was evaluated by reconstructing masked CIFAR-10 images during pretraining.
 
-[MAE reconstructions on CIFAR-10 validation images](assets/reconstructions.png)
+<img src="assets/reconstructions.png" alt="MAE reconstructions on CIFAR-10 validation images" width="500">
 
 *Each triplet shows, left to right: masked input, MAE reconstruction, original image.*
-
 
 ## Interpretation
 
@@ -136,4 +133,4 @@ This implementation was developed by studying and taking inspiration from existi
 - [x] TensorBoard logging
 - [x] Downstream classifier
 - [x] Scratch vs MAE-pretrained comparison
-- [ ] Reconstruction visualization
+- [x] Reconstruction visualization
